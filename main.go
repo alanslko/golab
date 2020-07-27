@@ -2,48 +2,67 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"reflect"
-	"time"
 
-	"github.com/alanslko/golab/internal/database"
-	"github.com/alanslko/golab/pkg/formatter"
+	"encoding/json"
 
-	"github.com/gin-gonic/gin"
+	"github.com/alanslko/golab/internal/ginlab"
 )
 
 // nullable(YES), editable(YES), unique(NO), autofill(NO), refreshable(NO), displayed(YES)
 
 type parent struct {
-	name  string
-	child `isNullable:"NO" isKey:"YES"`
+	Name string `json:"parentName"`
+	Kid  child  `isNullable:"NO" isKey:"YES"`
 }
 
 type child struct {
-	name string
-	age  int
+	Name string
+	Age  int
 }
 
 func init() {
-	fmt.Println(database.GetName())
-	fmt.Println(formatter.GetName())
+	//	fmt.Println(database.GetName())
+	//	fmt.Println(formatter.GetName())
 }
 
+func init() {
+	initRouter()
+}
+
+func initRouter() {
+	http.HandleFunc("/golab", handleGoLabRequest)
+}
+
+func handleGoLabRequest(w http.ResponseWriter, r *http.Request) {
+	write(w, p)
+}
+
+func write(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("content-type", "application/json")
+	b, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("[info] write http response (%v) meet error (%v)", data, err)
+	}
+	w.Write(b)
+}
+
+var p parent
+
 func main() {
-	p := parent{"cindy", child{"stefan", 7}}
-	fmt.Println(p.name)
+	p = parent{"cindy", child{"stefan", 7}}
+	fmt.Println(p.Name)
 	var t = reflect.TypeOf(p)
 
 	var tag = t.Field(1).Tag
 	fmt.Printf("reflect: %s %s", tag.Get("isNullable"), tag.Get("isKey"))
-	fmt.Printf("parent.age %d", p.age)
+	/*
+		if err := http.ListenAndServe("0.0.0.0:8080", nil); err != nil {
+			log.Printf("%v", err)
+		}
+	*/
 
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
-		now := time.Now().String()
-		c.Header("Cache-Control", "no-cache")
-		c.JSON(200, gin.H{
-			"message": now,
-		})
-	})
-	r.Run()
+	ginlab.GinLab()
 }
